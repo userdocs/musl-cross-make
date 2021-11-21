@@ -1,0 +1,47 @@
+name: CI matrix musl-cross-make reusable main
+
+on:
+  - workflow_dispatch
+
+jobs:
+  gcc-5:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "5"
+      gcc_version: "5.5.0"
+
+  gcc-6:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "6"
+      gcc_version: "6.5.0"
+
+  gcc-7:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "7"
+      gcc_version: "7.5.0"
+
+  gcc-8:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "8"
+      gcc_version: "8.5.0"
+
+  gcc-9:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "9"
+      gcc_version: "9-20211111"
+
+  gcc-10:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "10"
+      gcc_version: "10-20211112"
+
+  gcc-11:
+    uses: userdocs/musl-cross-make/.github/workflows/CI_matrix-musl-cross-gcc-reusable.yml@main
+    with:
+      gcc_major_version: "11"
+      gcc_version: "11-20211113"

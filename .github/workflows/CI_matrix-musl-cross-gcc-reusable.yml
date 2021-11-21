@@ -1,0 +1,129 @@
+name: CI matrix musl-cross-make reusable
+
+on:
+  workflow_call:
+    inputs:
+      gcc_major_version:
+        required: true
+        type: string
+      gcc_version:
+        required: true
+        type: string
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        name: [musl-cross-make]
+        os_id: [alpine]
+        os_version_id: [edge]
+        arch_type:
+          [
+            aarch64-linux-musl,
+            aarch64_be-linux-musl,
+            arm-linux-musleabi,
+            arm-linux-musleabihf,
+            armeb-linux-musleabi,
+            armeb-linux-musleabihf,
+            armel-linux-musleabi,
+            armel-linux-musleabihf,
+            armv5l-linux-musleabi,
+            armv5l-linux-musleabihf,
+            armv6-linux-musleabi,
+            armv6-linux-musleabihf,
+            armv7l-linux-musleabihf,
+            armv7m-linux-musleabi,
+            armv7r-linux-musleabihf,
+            i486-linux-musl,
+            i686-linux-musl,
+            m68k-linux-musl,
+            microblaze-linux-musl,
+            microblazeel-linux-musl,
+            mips-linux-musl,
+            mips-linux-muslsf,
+            mips-linux-musln32sf,
+            mips64-linux-musl,
+            mips64-linux-musln32,
+            mips64-linux-musln32sf,
+            mips64el-linux-musl,
+            mips64el-linux-musln32,
+            mips64el-linux-musln32sf,
+            mipsel-linux-musl,
+            mipsel-linux-musln32,
+            mipsel-linux-musln32sf,
+            mipsel-linux-muslsf,
+            or1k-linux-musl,
+            powerpc-linux-musl,
+            powerpc-linux-muslsf,
+            powerpc64-linux-musl,
+            powerpc64le-linux-musl,
+            powerpcle-linux-musl,
+            powerpcle-linux-muslsf,
+            riscv32-linux-musl,
+            riscv64-linux-musl,
+            s390x-linux-musl,
+            sh2-linux-musl,
+            sh2-linux-muslfdpic,
+            sh2eb-linux-musl,
+            sh2eb-linux-muslfdpic,
+            sh4-linux-musl,
+            sh4eb-linux-musl,
+            x86_64-linux-musl,
+            x86_64-linux-muslx32,
+          ]
+
+    name: ${{ matrix.name }} ${{ matrix.arch_type }}
+
+    env:
+      gcc_major_version: ${{ inputs.gcc_major_version }}
+      gcc_version: ${{ inputs.gcc_version }}
+      riscv32: "git-b76f37fd5625d038141b52184956fb4b7838e9a5"
+      prerelease: false
+
+    steps:
+      - uses: actions/checkout@v2.4.0
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - upgrade
+        run: sudo apt-get -y upgrade
+
+      - name: Host - Install host qemu-static
+        run: sudo apt-get install -y qemu binfmt-support qemu-user-static
+
+      - name: Host - Docker multiarch bootstrap
+        run: sudo docker run --rm --privileged multiarch/qemu-user-static --reset -p yes
+
+      - name: Host - Create docker multiarch container
+        run: docker run --name multiarch -it -d -w /root -v ${{ github.workspace }}:/root ${{ matrix.os_id }}:${{ matrix.os_version_id }}
+
+      - name: Docker - apk install build deps
+        run: docker exec -w /root multiarch apk add autoconf automake bash bash-completion bison build-base cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync texinfo ttf-freefont xz zip
+
+      - name: Docker - Git clone musl-cross-make
+        run: docker exec -w /root multiarch git clone --single-branch --branch "master" --shallow-submodules --recurse-submodules --depth 1 https://git.zv.io/toolchains/musl-cross-make.git musl-cross-make
+
+      - name: Docker - Set toolchain to ${{ matrix.arch_type }}
+        run: docker exec -w /root multiarch sed "s|MATRIX_TARGET|${{ matrix.arch_type }}|" -i config.mak
+
+      - name: Docker - Set gcc to ${{ matrix.arch_type }}
+        run: docker exec -w /root multiarch sed -r "s|GCC_VER = (.*)|GCC_VER = ${{ env.gcc_version }}|" -i config.mak
+
+      - name: Docker - Set riscv32 musl to ${{ env.riscv32 }}
+        if: matrix.arch_type == 'riscv32-linux-musl'
+        run: docker exec -w /root multiarch sed "s|MUSL_VER = git-master|MUSL_VER = ${{ env.riscv32 }}|" -i config.mak
+
+      - name: Docker - Copy updated config.mak to build directory
+        run: docker exec -w /root multiarch cp -f config.mak musl-cross-make/config.mak
+
+      - name: Docker - build ${{ matrix.arch_type }} toolchain
+        run: docker exec -w /root/musl-cross-make multiarch make -j"$(nproc)"
+
+      - name: Docker - install ${{ matrix.arch_type }} toolchain
+        run: docker exec -w /root/musl-cross-make multiarch make install
+
+      - name: Docker - archive ${{ matrix.arch_type }} toolchain
+        run: docker exec -w /root/musl-cross-make multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz output/
