@@ -1,4 +1,4 @@
-name: CI matrix musl-cross-make reusable
+name: CI reusable matrix musl-cross-make
 
 on:
   workflow_call:

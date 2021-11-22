@@ -1,4 +1,4 @@
-name: CI matrix musl-cross-make reusable main
+name: CI reusable main
 
 on:
   - workflow_dispatch
