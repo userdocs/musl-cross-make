@@ -4,34 +4,34 @@ on:
   - workflow_dispatch
 
 jobs:
-  gcc-5:
+  gcc-05:
     uses: userdocs/musl-cross-make/.github/workflows/CI_reusable-matrix-musl-cross-gcc.yml@main
     with:
-      gcc_major_version: "05"
+      gcc_major_version: "5"
       gcc_version: "5.5.0"
 
-  gcc-6:
+  gcc-06:
     uses: userdocs/musl-cross-make/.github/workflows/CI_reusable-matrix-musl-cross-gcc.yml@main
     with:
-      gcc_major_version: "06"
+      gcc_major_version: "6"
       gcc_version: "6.5.0"
 
-  gcc-7:
+  gcc-07:
     uses: userdocs/musl-cross-make/.github/workflows/CI_reusable-matrix-musl-cross-gcc.yml@main
     with:
-      gcc_major_version: "07"
+      gcc_major_version: "7"
       gcc_version: "7.5.0"
 
-  gcc-8:
+  gcc-08:
     uses: userdocs/musl-cross-make/.github/workflows/CI_reusable-matrix-musl-cross-gcc.yml@main
     with:
-      gcc_major_version: "08"
+      gcc_major_version: "8"
       gcc_version: "8.5.0"
 
-  gcc-9:
+  gcc-09:
     uses: userdocs/musl-cross-make/.github/workflows/CI_reusable-matrix-musl-cross-gcc.yml@main
     with:
-      gcc_major_version: "09"
+      gcc_major_version: "9"
       gcc_version: "9-20211111"
 
   gcc-10:
