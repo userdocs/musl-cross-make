@@ -120,9 +120,6 @@ jobs:
       - name: Docker - Unpack musl-cross-make-master artifact
         run: docker exec -w /root/musl-cross-make-artifact-archive multiarch tar -xf musl-cross-make-master.tar.gz -C /root
 
-      - name: Docker - Set toolchain to ${{ matrix.arch_type }}
-        run: docker exec -w /root multiarch sed "s|MATRIX_TARGET|${{ matrix.arch_type }}|" -i config.mak
-
       - name: Docker - Set riscv32 musl to ${{ env.riscv32 }}
         if: matrix.arch_type == 'riscv32-linux-musl'
         run: docker exec -w /root multiarch sed "s|MUSL_VER = git-master|MUSL_VER = ${{ env.riscv32 }}|" -i config.mak
@@ -130,26 +127,55 @@ jobs:
       - name: Docker - Copy updated config.mak to build directory
         run: docker exec -w /root multiarch cp -f config.mak musl-cross-make-master/config.mak
 
-      - name: Docker - build ${{ matrix.arch_type }} toolchain
-        run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)"
-
       - name: Docker - install ${{ matrix.arch_type }} toolchain
-        run: docker exec -w /root/musl-cross-make-master multiarch make install
+        run: docker exec -w /root/musl-cross-make-master multiarch make -j"$(nproc)" install TARGET=${{ matrix.arch_type }} OUTPUT=/root/build/${{ matrix.arch_type }}
 
       - name: Docker - archive ${{ matrix.arch_type }} toolchain
-        run: docker exec -w /root/musl-cross-make-master multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz output/
+        run: docker exec -w /root/build multiarch tar -czvf ${{ matrix.arch_type }}.tar.gz ${{ matrix.arch_type }}/
 
       - name: Host - set tag via date
-        run: echo "github_tag=$(date +"%m-%Y")" >> $GITHUB_ENV
+        run: echo "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
+
+      - name: Host - set release info dynamically from config.mak
+        run: printf "%s\n" "$(sed -rn "/CONFIG_SUB_REV = (.*)/,/LINUX_VER = (.*)/p" config.mak)" > realease_body.md
 
       - name: Create release - tag - assets
         uses: ncipollo/release-action@v1.8.10
         with:
           prerelease: false
-          artifacts: "musl-cross-make-master/${{ matrix.arch_type }}.tar.gz"
+          artifacts: "/root/build/${{ matrix.arch_type }}.tar.gz"
           replacesArtifacts: true
           tag: "${{ env.github_tag }}"
           name: "musl-cross-make toolchains"
           bodyFile: "realease_body.md"
           allowUpdates: true
           token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v1
+        with:
+          install: true
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v3
+        with:
+          images: userdocs/mcm
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push
+        id: docker_build
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: userdocs/mcm:${{ matrix.arch_type }}
+          build-args: |
+            TARGET=${{ matrix.arch_type }}
+            BASE_URL=https://github.com/userdocs/musl-cross-make/releases/latest/download
