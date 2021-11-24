@@ -12,8 +12,6 @@ COMMON_CONFIG += CFLAGS="${FLAG}" CXXFLAGS="${FLAG}" FFLAGS="${FLAG}" LDFLAGS="-
 BINUTILS_CONFIG += --enable-gold=yes
 GCC_CONFIG += --enable-default-pie --enable-static-pie --disable-cet
 
-TARGET = MATRIX_TARGET
-
 CONFIG_SUB_REV = 888c8e3d5f7b
 GCC_VER = 11-20211120
 BINUTILS_VER = 2.37
