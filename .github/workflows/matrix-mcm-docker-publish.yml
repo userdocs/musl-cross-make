@@ -1,4 +1,4 @@
-name: matrix mcm docker
+name: matrix mcm docker create and release
 
 on:
   workflow_dispatch:
@@ -71,7 +71,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
+        uses: actions/checkout@v2.4.0
 
       - name: Set up Docker Buildx
         id: buildx
