@@ -14,7 +14,7 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
 
       - name: Host - wget musl-cross-make-master
         run: wget -qO musl-cross-make-master.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/master/musl-cross-make-master.tar.gz
@@ -99,7 +99,7 @@ jobs:
       prerelease: false
 
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
 
       - name: Host - update
         run: sudo apt-get update
