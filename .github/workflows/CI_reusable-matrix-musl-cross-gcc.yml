@@ -14,13 +14,13 @@ jobs:
   bootstrap:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
 
       - name: Host - wget musl-cross-make-master
         run: wget -qO musl-cross-make-master.tar.gz https://git.zv.io/toolchains/musl-cross-make/-/archive/master/musl-cross-make-master.tar.gz
 
       - name: "Upload Artifact"
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@v3
         id: upload
         with:
           name: musl-cross-make-master-archive
@@ -99,7 +99,7 @@ jobs:
       prerelease: false
 
     steps:
-      - uses: actions/checkout@v2.4.0
+      - uses: actions/checkout@v3
 
       - name: Host - update
         run: sudo apt-get update
@@ -120,7 +120,7 @@ jobs:
         run: docker exec -w /root multiarch apk add autoconf automake bash bash-completion bison build-base cmake ccache curl findutils flex git graphviz libarchive-tools libtool linux-headers ncurses-dev patch perl pkgconf python3 python3-dev re2c rsync rsync tar texinfo ttf-freefont xz zip
 
       - name: Host - Download artifact - musl-cross-make-master
-        uses: actions/download-artifact@v2
+        uses: actions/download-artifact@v3
         id: download
         with:
           name: musl-cross-make-master-archive
