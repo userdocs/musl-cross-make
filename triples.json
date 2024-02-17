@@ -26,7 +26,7 @@
             },
             {
               "arch_type": "x86_64-linux-musl",
-              "arch_config": ""
+              "arch_config": "--with-arch=x86-64 --with-tune=generic"
             },
             {
               "arch_type": "mips-linux-musl",
