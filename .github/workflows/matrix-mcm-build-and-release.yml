@@ -46,7 +46,10 @@ jobs:
           zip
 
       - name: Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
-        run: sed "s|COMMON_CONFIG += |COMMON_CONFIG += ${{ matrix.arch_config }} |" -i config.mak
+        run: sed "s|COMMON_CONFIG +=|COMMON_CONFIG += ${{ matrix.arch_config }}|" -i config.mak
+
+      - name: Show updated config.mak
+        run: cat config.mak
 
       - name: install ${{ matrix.arch_type }} toolchain
         run: make -j"$(nproc)" install TARGET="${{ matrix.arch_type }}" OUTPUT="$(pwd)/build/${{ matrix.arch_type }}"
