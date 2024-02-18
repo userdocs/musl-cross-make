@@ -113,6 +113,7 @@ jobs:
           allowUpdates: true
 
   docker-publish:
+    if: always()
     needs: [bootstrap-matrix, build, release]
     runs-on: ubuntu-latest
     permissions:
