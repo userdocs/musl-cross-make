@@ -78,7 +78,7 @@ jobs:
     needs: [bootstrap-matrix, build]
     permissions:
       contents: write
-    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && inputs.docker_only == '1'
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled') && inputs.docker_only == '0'
     env:
       GH_TOKEN: "${{ github.TOKEN }}"
     steps:
@@ -112,7 +112,7 @@ jobs:
           allowUpdates: true
 
   docker-publish:
-    if: always()
+    if: always() && contains(needs.*.result, 'success') && !contains(needs.*.result, 'failure') && !contains(needs.*.result, 'cancelled')
     needs: [bootstrap-matrix, build, release]
     runs-on: ubuntu-latest
     permissions:
