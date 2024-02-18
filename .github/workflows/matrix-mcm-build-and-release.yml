@@ -11,6 +11,7 @@ on:
 
 jobs:
   bootstrap-matrix:
+    if: inputs.docker_only == '1'
     runs-on: ubuntu-latest
     outputs:
       matrix_includes: ${{ steps.triples.outputs.matrix_includes }}
