@@ -23,8 +23,6 @@ OUTPUT = $(CURDIR)/output$(if $(HOST),-$(HOST))
 
 REL_TOP = ../../..
 
--include config.mak
-
 SRC_DIRS = gcc-$(GCC_VER) binutils-$(BINUTILS_VER) musl-$(MUSL_VER) \
 	$(if $(GMP_VER),gmp-$(GMP_VER)) \
 	$(if $(MPC_VER),mpc-$(MPC_VER)) \
