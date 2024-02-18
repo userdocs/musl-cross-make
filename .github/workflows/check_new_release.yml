@@ -1,4 +1,4 @@
-name: check for new releases musl-cross-make
+name: musl-cross-make - check for new releases
 
 on:
   workflow_dispatch:
