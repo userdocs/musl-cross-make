@@ -3,13 +3,13 @@ SOURCES = sources
 -include versions.mak
 
 GNU_SITE = https://mirrors.dotsrc.org/gnu
+GCC_SNAP = https://gcc.gnu.org/pub/gcc/snapshots/
 GCC_SITE = $(GNU_SITE)/gcc
 BINUTILS_SITE = $(GNU_SITE)/binutils
 GMP_SITE = $(GNU_SITE)/gmp
 MPC_SITE = $(GNU_SITE)/mpc
 MPFR_SITE = $(GNU_SITE)/mpfr
 ISL_SITE = https://libisl.sourceforge.io
-GCC_SNAP = https://sourceware.org/pub/gcc/snapshots
 MUSL_SITE = https://musl.libc.org/releases
 MUSL_REPO = git://git.musl-libc.org/musl
 LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
