@@ -1,0 +1,89 @@
+name: ci - mcm-build
+
+on:
+  workflow_call:
+    inputs:
+      mcm_build_matrix:
+        description: "Json matrix for mcm build"
+        required: true
+        type: string
+      gnu_mirror_url:
+        description: "URL for GNU mirror"
+        required: true
+        type: string
+
+jobs:
+  mcm-build:
+    name: ${{ matrix.triple_prefix }}-${{ matrix.arch_type }}
+    runs-on: ${{ matrix.build_host }}
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(inputs.mcm_build_matrix) }}
+    env:
+      matrix_alpine_prefix: ${{ matrix.alpine_prefix }}
+      matrix_arch_type: ${{ matrix.arch_type }}
+      matrix_arch_config: ${{ matrix.arch_config }}
+      matrix_triple_prefix: ${{ matrix.triple_prefix }}
+      matrix_docker_platform: ${{ matrix.docker_platform }}
+      container_name: mcm
+      gnu_mirror_url: ${{ inputs.gnu_mirror_url }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Host - Download source artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: ${{ github.workspace }}/sources
+          pattern: qbt-mcm-source-files
+          merge-multiple: true
+
+      - name: Host - update
+        run: sudo apt-get update
+
+      - name: Host - set up qemu-user-static binfmt-support
+        run: sudo apt install libpipeline1 qemu-user-static binfmt-support
+
+      - name: Host - Create docker multiarch container
+        run: |
+          docker run --name ${container_name} -it -d -e "GNU_MIRROR_URL=${gnu_mirror_url}" -w /home/gh -v ${{ github.workspace }}:/home/gh ${matrix_alpine_prefix}/alpine:edge
+          docker exec ${container_name} sh -c 'adduser -h /home/gh -Ds /bin/bash -u 1001 gh && apk add sudo'
+          docker exec ${container_name} sh -c 'printf "%s" "gh ALL=(ALL) NOPASSWD: ALL" > /etc/sudoers.d/gh'
+
+      - name: Docker - apk update
+        run: docker exec ${container_name} apk update
+
+      - name: Docker - apk install bash
+        run: docker exec ${container_name} apk add -u --no-cache autoconf automake bash bison build-base curl findutils flex git libarchive-tools libtool linux-headers patch perl pkgconf rsync tar texinfo xz zip zlib-dev zlib-static
+
+      - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
+        run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
+
+      - name: Host - cowpatch
+        run: docker exec ${container_name} chmod +x cowpatch.sh
+
+      - name: Host -  Show updated config.mak
+        run: cat config.mak
+
+      - name: Docker - install ${{ matrix.arch_type }} toolchain
+        run: docker exec -u gh:gh ${container_name} make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
+
+      - name: Host - archive ${{ matrix.arch_type }} toolchain
+        run: |
+          cd "$(pwd)/build"
+          XZ_OPT=-9T0 tar -cvJf ${matrix_triple_prefix}-${matrix_arch_type}.tar.xz ${matrix_arch_type}/
+
+      - name: Host - Generate artifact attestation
+        uses: actions/attest-build-provenance@v2
+        with:
+          subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
+
+      - name: Host - Docker - upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: "qbt-${{ env.container_name }}-${{ matrix.triple_prefix }}-${{ matrix.arch_type }}"
+          path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"

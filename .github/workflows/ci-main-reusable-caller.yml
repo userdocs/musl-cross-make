@@ -1,0 +1,134 @@
+name: ci - main reusable caller
+
+on:
+  workflow_dispatch:
+    inputs:
+      gnu_mirror_url:
+        description: "Which GNU mirror to use?"
+        required: true
+        default: "https://mirrors.dotsrc.org/gnu"
+        type: string
+      only-arm64-runners:
+        description: "Only arm64 matrix"
+        required: true
+        default: true
+        type: boolean
+      only-amd64-runners:
+        description: "Only amd64 matrix"
+        required: true
+        default: false
+        type: boolean
+      arm64-amd64-runners:
+        description: "arm64 and amd64 matrix"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  ci-bootstrap-build-deps:
+    concurrency:
+      group: ci-check-new-releases
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-bootstrap-build-deps.yml
+    with:
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
+
+  ci-bootstrap-matrix:
+    needs: [ci-bootstrap-build-deps]
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
+      docker_build_matrix: ${{ steps.triples.outputs.docker_build_matrix }}
+      docker_test_matrix: ${{ steps.triples.outputs.docker_test_matrix }}
+    env:
+      only-arm64-runners: ${{ github.event.inputs.only-arm64-runners && 'true' || 'false'}}
+      only-amd64-runners: ${{ github.event.inputs.only-arm64-runners && 'true' || 'false' }}
+      arm64-amd64-runners: ${{ github.event.inputs.only-arm64-runners && 'true' || 'false' }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: bootstrap the matrix
+        id: triples
+        run: |
+          if [[ ${arm64-amd64-runners} == "true" ]] || \
+            [[ ${only-arm64-runners} == "true" && ${only-amd64-runners} == "true" ]] || \
+            [[ ${arm64-amd64-runners} == "true" && ${only-arm64-runners} == "true" && ${only-amd64-runners} == "true" ]]; then
+            echo "mcm_build_matrix=$(jq -c . triples.json)" >> $GITHUB_OUTPUT
+            echo "$(jq . triples.json)" >> $GITHUB_STEP_SUMMARY
+          elif [[ ${only-arm64-runners} == "true" && ${only-amd64-runners} == "false" && ${arm64-amd64-runners} == "false" ]]; then
+            build_host_exclude="ubuntu-24.04"
+          elif [[ ${only-amd64-runners} == "true" && ${only-arm64-runners} == "false" && ${arm64-amd64-runners} == "false" ]]; then
+            build_host_exclude="ubuntu-24.04-arm"
+          else
+            echo "Error: Invalid runner selection."
+            exit 1
+          fi
+
+          if [[ -n $build_host_exclude ]]; then
+            echo "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)" >> $GITHUB_OUTPUT
+            echo "$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  ci-mcm-build:
+    needs: [ci-bootstrap-matrix]
+    concurrency:
+      group: ci-mcm-build
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+    uses: ./.github/workflows/ci-mcm-build.yml
+    with:
+      mcm_build_matrix: ${{ needs.bootstrap-matrix.outputs.mcm_build_matrix }}
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
+
+  ci-mcm-release:
+    needs: [ci-mcm-build]
+    concurrency:
+      group: ci-mcm-release
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-mcm-release.yml
+
+  ci-docker-build:
+    needs: [bootstrap-matrix, ci-mcm-release]
+    concurrency:
+      group: ci-docker-build
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+    uses: ./.github/workflows/ci-docker-build.yml
+    with:
+      docker_build_matrix: ${{ needs.bootstrap-matrix.outputs.docker_build_matrix }}
+
+  ci-docker-test:
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && ( needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      || needs.scheduled_defaults.outputs.docker_only != 'false' && needs.scheduled_defaults.outputs.toolchains_only != 'true' )
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        bootstrap-matrix,
+        ci-docker-build,
+      ]
+    concurrency:
+      group: ci-docker-test
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-docker-test.yml
+    with:
+      docker_test_matrix: ${{ needs.bootstrap-matrix.outputs.docker_test_matrix }}
