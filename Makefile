@@ -188,3 +188,6 @@ install: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.ma
 endif
 
 .SECONDARY:
+
+download_only: $(foreach dir,$(SRC_DIRS),$(patsubst hashes/$(dir).%.sha1,$(SOURCES)/$(dir).%,$(wildcard hashes/$(dir).*)))
+	@echo "All sources downloaded."
