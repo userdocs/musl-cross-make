@@ -1,30 +1,9 @@
+SOURCES = $(shell pwd)/sources
 
-SOURCES = sources
+-include versions.mak
+-include source_urls.mak
 
-CONFIG_SUB_REV = 3d5db9ebe860
-BINUTILS_VER = 2.44
-GCC_VER = 9.4.0
-MUSL_VER = 1.2.5
-GMP_VER = 6.1.2
-MPC_VER = 1.1.0
-MPFR_VER = 4.0.2
-LINUX_VER = headers-4.19.88-2
-
-GNU_SITE = https://ftpmirror.gnu.org/gnu
-GCC_SITE = $(GNU_SITE)/gcc
-BINUTILS_SITE = $(GNU_SITE)/binutils
-GMP_SITE = $(GNU_SITE)/gmp
-MPC_SITE = $(GNU_SITE)/mpc
-MPFR_SITE = $(GNU_SITE)/mpfr
-ISL_SITE = https://downloads.sourceforge.net/project/libisl/
-
-MUSL_SITE = https://musl.libc.org/releases
-MUSL_REPO = https://git.musl-libc.org/git/musl
-
-LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
-LINUX_HEADERS_SITE = https://ftp.barfooze.de/pub/sabotage/tarballs/
-
-DL_CMD = wget -c -O
+DL_CMD = curl -L4 --connect-timeout 5 --retry 5 --retry-delay 5 --retry-max-time 25 -o
 SHA1_CMD = sha1sum -c
 
 COWPATCH = $(CURDIR)/cowpatch.sh
@@ -34,8 +13,6 @@ BUILD_DIR = build/$(if $(HOST),$(HOST),local)/$(TARGET)
 OUTPUT = $(CURDIR)/output$(if $(HOST),-$(HOST))
 
 REL_TOP = ../../..
-
--include config.mak
 
 SRC_DIRS = gcc-$(GCC_VER) binutils-$(BINUTILS_VER) musl-$(MUSL_VER) \
 	$(if $(GMP_VER),gmp-$(GMP_VER)) \
@@ -56,15 +33,19 @@ distclean: clean
 # Rules for downloading and verifying sources. Treat an external SOURCES path as
 # immutable and do not try to download anything into it.
 
-ifeq ($(SOURCES),sources)
+ifeq ($(SOURCES),$(shell pwd)/sources)
 
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gmp*)): SITE = $(GMP_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpc*)): SITE = $(MPC_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/mpfr*)): SITE = $(MPFR_SITE)
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/isl*)): SITE = $(ISL_SITE)
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils*)): SITE = $(BINUTILS_SITE)
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
-$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl*)): SITE = $(MUSL_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils-*.*.tar*)): SITE = $(BINUTILS_SITE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/binutils-*.*.*.tar*)): SITE = $(BINUTILS_SNAP)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc-*)): SITE = $(GCC_SITE)/$(basename $(basename $(notdir $@)))
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/gcc-*-*)): SITE = $(GCC_SNAP)/$(subst gcc-,,$(basename $(basename $(notdir $@))))
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl-1.*)): SITE = $(MUSL_RELEASE)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/musl-[0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F][0-9a-fA-F]*)): SITE = $(MUSL_SNAPSHOT)
+$(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-7*)): SITE = $(LINUX_SITE)/v7.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-6*)): SITE = $(LINUX_SITE)/v6.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-5*)): SITE = $(LINUX_SITE)/v5.x
 $(patsubst hashes/%.sha1,$(SOURCES)/%,$(wildcard hashes/linux-4*)): SITE = $(LINUX_SITE)/v4.x
@@ -98,7 +79,7 @@ endif
 
 musl-git-%:
 	rm -rf $@.tmp
-	git clone -b $(patsubst musl-git-%,%,$@) $(MUSL_REPO) $@.tmp
+	git clone --shallow-submodules --recurse-submodules --depth 1 -b $(patsubst musl-git-%,%,$@) $(MUSL_REPO) $@.tmp
 	cd $@.tmp && git fsck
 	mv $@.tmp $@
 
@@ -111,6 +92,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %.orig: $(SOURCES)/%.tar.bz2
 	case "$@" in */*) exit 1 ;; esac
@@ -121,6 +103,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %.orig: $(SOURCES)/%.tar.xz
 	case "$@" in */*) exit 1 ;; esac
@@ -131,6 +114,7 @@ musl-git-%:
 	touch $@.tmp/$(patsubst %.orig,%,$@)
 	mv $@.tmp/$(patsubst %.orig,%,$@) $@
 	rm -rf $@.tmp
+	case "$@" in binutils-*) rm -f $@/gas/doc/.dirstamp ;; esac
 
 %: %.orig | $(SOURCES)/config.sub
 	case "$@" in */*) exit 1 ;; esac
@@ -188,3 +172,6 @@ install: | $(SRC_DIRS) $(BUILD_DIR) $(BUILD_DIR)/Makefile $(BUILD_DIR)/config.ma
 endif
 
 .SECONDARY:
+
+download_only: $(foreach dir,$(SRC_DIRS),$(patsubst hashes/$(dir).%.sha1,$(SOURCES)/$(dir).%,$(wildcard hashes/$(dir).*)))
+	@echo "All sources downloaded."
