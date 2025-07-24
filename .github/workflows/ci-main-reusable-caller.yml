@@ -1,0 +1,157 @@
+name: ci - main reusable caller
+
+on:
+  workflow_dispatch:
+    inputs:
+      gnu_mirror_url:
+        description: "Which GNU mirror to use?"
+        required: true
+        default: "https://mirrors.dotsrc.org/gnu"
+        type: string
+      only_aarch64_runners:
+        description: "aarch64 matrix"
+        required: true
+        default: true
+        type: boolean
+      only_x86_64_runners:
+        description: "x86_64 matrix"
+        required: true
+        default: false
+        type: boolean
+      aarch64_x86_64_runners:
+        description: "aarch64 and x86_64 matrix"
+        required: true
+        default: false
+        type: boolean
+      toolchains_only:
+        description: "Only toolchain jobs"
+        required: true
+        default: false
+        type: boolean
+      docker_only:
+        description: "Only docker jobs"
+        required: true
+        default: false
+        type: boolean
+
+jobs:
+  ci-bootstrap-matrix:
+    runs-on: ubuntu-24.04-arm
+    outputs:
+      mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
+      docker_build_matrix: ${{ steps.triples.outputs.docker_build_matrix }}
+      docker_test_matrix: ${{ steps.triples.outputs.docker_test_matrix }}
+      docker_build_platforms: ${{ steps.triples.outputs.docker_build_platforms }}
+    env:
+      only_aarch64_runners: ${{ github.event.inputs.only_aarch64_runners }}
+      only_x86_64_runners: ${{ github.event.inputs.only_x86_64_runners }}
+      aarch64_x86_64_runners: ${{ github.event.inputs.aarch64_x86_64_runners }}
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: bootstrap the matrix
+        id: triples
+        run: |
+          printf '\n%b\n' "# versions.mak\n\n\`\`\`makefile\n$(cat versions.mak)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          printf '%s\n' "docker_build_matrix=$(jq -c '{arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+          printf '\n%b\n' "# docker_build_matrix\n\n\`\`\`json\n$(jq '{arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+
+          if [[ ${aarch64_x86_64_runners} == "true" ]] || \
+            [[ ${only_aarch64_runners} == "true" && ${only_x86_64_runners} == "true" ]] || \
+            [[ ${aarch64_x86_64_runners} == "true" && ${only_aarch64_runners} == "true" && ${only_x86_64_runners} == "true" ]]; then
+            printf '%s\n' "docker_build_platforms=linux/x86_64,linux/aarch64" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_build_platforms\n\n\`\`\`bash\ndocker_build_platforms=linux/x86_64,linux/aarch64\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "mcm_build_matrix=$(jq -c . triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq . triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "docker_test_matrix=$(jq -c '{build_host: [.build_host[]], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq '{build_host: [.build_host[]], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          elif [[ ${only_aarch64_runners} == "true" && ${only_x86_64_runners} == "false" && ${aarch64_x86_64_runners} == "false" ]]; then
+            build_host_exclude="ubuntu-24.04"
+            printf '%s\n' "docker_build_platforms=linux/aarch64" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_build_platforms\n\n\`\`\`bash\ndocker_build_platforms=linux/aarch64\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          elif [[ ${only_x86_64_runners} == "true" && ${only_aarch64_runners} == "false" && ${aarch64_x86_64_runners} == "false" ]]; then
+            build_host_exclude="ubuntu-24.04-arm"
+            printf '%s\n' "docker_build_platforms=linux/x86_64" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_build_platforms\n\n\`\`\`bash\ndocker_build_platforms=linux/x86_64\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            printf '%s\n' "Error: Invalid runner selection."
+            exit 1
+          fi
+
+          if [[ -n $build_host_exclude ]]; then
+            printf '%s\n' "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "docker_test_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          fi
+
+  ci-bootstrap-build-deps:
+    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
+    needs: [ci-bootstrap-matrix]
+    concurrency:
+      group: ci-check-new-releases
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-bootstrap-build-deps.yml
+    with:
+      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url }}
+
+  ci-mcm-build:
+    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
+    needs: [ci-bootstrap-matrix, ci-bootstrap-build-deps]
+    concurrency:
+      group: ci-mcm-build
+      cancel-in-progress: true
+    permissions:
+      id-token: write
+      contents: read
+      attestations: write
+    uses: ./.github/workflows/ci-mcm-build.yml
+    with:
+      mcm_build_matrix: ${{ needs.ci-bootstrap-matrix.outputs.mcm_build_matrix }}
+      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url }}
+
+  ci-mcm-release:
+    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
+    needs: [ci-mcm-build]
+    concurrency:
+      group: ci-mcm-release
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-mcm-release.yml
+
+  ci-docker-build:
+    if: always() && !failure() && !cancelled() && github.event.inputs.toolchains_only != 'true'
+    needs: [ci-bootstrap-matrix, ci-mcm-release]
+    concurrency:
+      group: ci-docker-build
+      cancel-in-progress: true
+    permissions:
+      contents: read
+      id-token: write
+      packages: write
+      attestations: write
+    uses: ./.github/workflows/ci-docker-build.yml
+    with:
+      docker_build_matrix: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_matrix }}
+      docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
+
+  ci-docker-test:
+    if: always() && !failure() && !cancelled() && github.event.inputs.toolchains_only != 'true'
+    needs: [ci-bootstrap-matrix, ci-docker-build]
+    concurrency:
+      group: ci-docker-test
+      cancel-in-progress: true
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-docker-test.yml
+    with:
+      docker_test_matrix: ${{ needs.ci-bootstrap-matrix.outputs.docker_test_matrix }}
+      docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
