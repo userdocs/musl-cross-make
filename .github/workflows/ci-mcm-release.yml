@@ -1,0 +1,41 @@
+name: ci - toolchain release
+
+on:
+  workflow_call:
+
+jobs:
+  toolchain-release:
+    name: toolchain release
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+
+      - name: Host - Download artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: toolchains
+          pattern: "*-toolchain"
+          merge-multiple: true
+
+      - name: set release info from versions.mak
+        run: |
+          printf '%b' '| Dependency | Version |\n|:---|:---|\n' > release_body.md;
+          grep -v '^#' versions.mak | grep -v '^\s*$' | sed -E 's/ *([^ =]+) *= *(.*)/| `\1` | `\2` |/' >> release_body.md
+
+      - name: set tag via date
+        run: printf '%s\n' "github_tag=$(date +"%j-%y")" >> $GITHUB_ENV
+
+      - name: Create release - tag - assets
+        uses: ncipollo/release-action@v1
+        with:
+          prerelease: false
+          artifacts: "toolchains/*.tar.xz"
+          replacesArtifacts: true
+          tag: "${{ env.github_tag }}"
+          name: "musl-cross-make toolchains"
+          bodyFile: release_body.md
+          allowUpdates: true
