@@ -5,47 +5,15 @@ BINUTILS_SRCDIR = BINUTILS_SRCDIR_not_set
 GCC_SRCDIR = GCC_SRCDIR_not_set
 MUSL_SRCDIR = MUSL_SRCDIR_not_set
 
-GCC_CONFIG_FOR_TARGET = 
-COMMON_CONFIG = 
-GCC_CONFIG = 
-TOOLCHAIN_CONFIG = 
+COMMON_CONFIG =
+BINUTILS_CONFIG =
+GCC_CONFIG =
+GCC_CONFIG_FOR_TARGET =
 
 XGCC_DIR = ../obj_gcc/gcc
 XGCC = $(XGCC_DIR)/xgcc -B $(XGCC_DIR)
 
 -include config.mak
-
-ifneq ($(findstring fdpic,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --enable-fdpic
-endif
-
-ifneq ($(filter x86_64%x32,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=x32
-endif
-
-ifneq ($(findstring powerpc64,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=elfv2
-endif
-
-ifneq ($(findstring mips64,$(TARGET))$(findstring mipsisa64,$(TARGET)),)
-ifneq ($(findstring n32,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-abi=n32
-else
-GCC_CONFIG_FOR_TARGET += --with-abi=64
-endif
-endif
-
-ifneq ($(findstring s390x,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-long-double-128
-endif
-
-ifneq ($(filter %sf,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-float=soft
-endif
-
-ifneq ($(filter %hf,$(TARGET)),)
-GCC_CONFIG_FOR_TARGET += --with-float=hard
-endif
 
 ifneq ($(LIBTOOL),)
 LIBTOOL_ARG = LIBTOOL=$(LIBTOOL)
@@ -56,33 +24,17 @@ MAKE += INFO_DEPS= infodir=
 MAKE += ac_cv_prog_lex_root=lex.yy
 MAKE += MAKEINFO=false
 
-FULL_BINUTILS_CONFIG = \
-	--disable-separate-code \
-	$(COMMON_CONFIG) $(BINUTILS_CONFIG) $(TOOLCHAIN_CONFIG) \
-	--disable-werror \
-	--target=$(TARGET) --prefix= \
-	--libdir=/lib --disable-multilib \
-	--with-sysroot=$(SYSROOT) \
-	--enable-deterministic-archives
+FULL_BINUTILS_CONFIG = --prefix= --libdir=/lib --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+	$(COMMON_CONFIG) \
+	$(BINUTILS_CONFIG)
 
-FULL_GCC_CONFIG = --enable-languages=c,c++ \
-	$(GCC_CONFIG_FOR_TARGET) \
-	$(COMMON_CONFIG) $(GCC_CONFIG) $(TOOLCHAIN_CONFIG) \
-	--disable-bootstrap \
-	--disable-assembly \
-	--disable-werror \
-	--target=$(TARGET) --prefix= \
-	--libdir=/lib --disable-multilib \
-	--with-sysroot=$(SYSROOT) \
-	--enable-tls \
-	--disable-libmudflap --disable-libsanitizer \
-	--disable-gnu-indirect-function \
-	--disable-libmpx \
-	--enable-initfini-array \
-	--enable-libstdcxx-time=rt
+FULL_GCC_CONFIG = --prefix= --libdir=/lib --target=$(TARGET) --with-sysroot=$(SYSROOT) \
+	$(COMMON_CONFIG) \
+	$(GCC_CONFIG) \
+	$(GCC_CONFIG_FOR_TARGET)
 
-FULL_MUSL_CONFIG = $(MUSL_CONFIG) \
-	--prefix= --host=$(TARGET)
+FULL_MUSL_CONFIG = --prefix= --host=$(TARGET) \
+	$(MUSL_CONFIG)
 
 ifneq ($(NATIVE),)
 HOST:=$(TARGET)
@@ -109,7 +61,7 @@ FULL_GCC_CONFIG += --with-build-sysroot=$(CURDIR)/obj_sysroot \
 	STRIP_FOR_TARGET=$(PWD)/obj_binutils/binutils/strip-new \
 	--build=$(BUILD) --host=$(BUILD) \
 	# end
-FULL_MUSL_CONFIG += CC="$(XGCC)" LIBCC="../obj_gcc/$(TARGET)/libgcc/libgcc.a" 
+FULL_MUSL_CONFIG += CC="$(XGCC)" LIBCC="../obj_gcc/$(TARGET)/libgcc/libgcc.a"
 MUSL_VARS = AR=../obj_binutils/binutils/ar RANLIB=../obj_binutils/binutils/ranlib
 obj_musl/.lc_configured: | obj_gcc/gcc/.lc_built
 obj_musl/.lc_built: | obj_gcc/$(TARGET)/libgcc/libgcc.a
@@ -120,7 +72,7 @@ else
 SYSROOT = /
 FULL_BINUTILS_CONFIG += --build=$(BUILD) --host=$(HOST)
 FULL_GCC_CONFIG += --build=$(BUILD) --host=$(HOST)
-MUSL_VARS = 
+MUSL_VARS =
 endif
 
 ifeq ($(TARGET),)
