@@ -61,7 +61,7 @@ jobs:
       - name: Host - Github cache files - update timestamps
         run: find ${{ github.workspace }}/sources/ -type f -exec touch -a -m {} +
 
-      - uses: userdocs/actions/qbt_docker@14953114cb6e6734621fcb56513a9b751476b60f # v1.0.0
+      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
         with:
             container_name: ${{ env.container_name }}
             os_id: "alpine"
@@ -100,7 +100,7 @@ jobs:
           subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
 
       - name: Host - Docker - upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
