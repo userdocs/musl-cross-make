@@ -9,6 +9,18 @@ ENV CC=${ARCH}-gcc
 ENV CXX=${ARCH}-g++
 ENV AR=${ARCH}-ar
 
+# Add metadata labels for easy parsing
+LABEL org.opencontainers.image.base.name="alpine:edge" \
+      org.opencontainers.image.base.id="alpine" \
+      org.opencontainers.image.base.codename="edge" \
+      org.opencontainers.image.title="musl-cross-make" \
+      org.opencontainers.image.description="musl cross build toolchains" \
+      org.opencontainers.image.source="https://github.com/userdocs/musl-cross-make" \
+      org.opencontainers.image.url="https://github.com/userdocs/musl-cross-make" \
+      org.opencontainers.image.documentation="https://github.com/userdocs/musl-cross-make/blob/main/README.md" \
+      org.opencontainers.image.licenses="MIT" \
+      org.opencontainers.image.vendor="userdocs"
+
 RUN case "$TARGETPLATFORM" in \
         "linux/amd64") URL_PREFIX="x86_64" ;; \
         "linux/arm64") URL_PREFIX="aarch64" ;; \

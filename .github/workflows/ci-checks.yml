@@ -8,16 +8,61 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+permissions: {}
+
 jobs:
+  sh-checker:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Run the sh-checker
+        uses: luizm/action-sh-checker@883217215b11c1fabbf00eb1a9a041f62d74c744 # v0.10.0
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SHELLCHECK_OPTS: -e SC2034,SC1091 # It is possible to exclude some shellcheck warnings.
+          SHFMT_OPTS: -ci -sr -i 0 # It is possible to pass arguments to shftm
+        with:
+          sh_checker_comment: true
+          sh_checker_exclude: ""
+
   zizmor-checker:
     runs-on: ubuntu-24.04-arm
     permissions:
       security-events: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
       - name: Run zizmor 🌈
-        uses: zizmorcore/zizmor-action@f52a838cfabf134edcbaa7c8b3677dde20045018 # v0.1.1
+        uses: zizmorcore/zizmor-action@0dce2577a4760a2749d8cfb7a84b7d5585ebcb7d # v0.5.0
+
+  editorconfig-checker:
+    runs-on: ubuntu-24.04-arm
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: editorconfig-checker
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          runner_arch: ${{ runner.arch }}
+        run: |
+          case "${runner_arch}" in
+            X86 | X64)
+              arch="amd64"
+              ;;
+            ARM | ARM64)
+              arch="arm64"
+              ;;
+          esac
+
+          curl -Lo- "https://github.com/editorconfig-checker/editorconfig-checker/releases/latest/download/ec-linux-${arch}.tar.gz" | tar xzf - --strip-components=1
+          ./ec-linux-${arch} --exclude '^(docs/.*|patches/.*)$' | sed 's/\x1b\[[0-9;]*m//g' | { printf '%b\n' '```bash' >> "$GITHUB_STEP_SUMMARY"; tee -a "$GITHUB_STEP_SUMMARY"; printf '%b\n' '```' >> "$GITHUB_STEP_SUMMARY"; }
+          exit_code=("${PIPESTATUS[0]}")
+          # exit "${exit_code}"

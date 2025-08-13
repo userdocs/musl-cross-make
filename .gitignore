@@ -9,3 +9,5 @@
 /linux-*/
 /isl-*/
 /build/
+remote_versions.json
+.claude/settings.local.json

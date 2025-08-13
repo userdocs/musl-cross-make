@@ -27,10 +27,23 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
+
+      - name: Host - Bootstrap docker container
+        uses: userdocs/actions/qbt_docker@e8f57bd585c7bb6dcce011694d6772bab657abca # v1.0.7
+        with:
+            os_id: "alpine"
+            os_version_id: "edge"
+            additional_apps: >
+              autoconf automake bash bison build-base curl
+              findutils flex git libarchive-tools libtool
+              linux-headers patch perl pkgconf rsync
+              tar texinfo xz zip zlib-dev zlib-static
+            custom_docker_commands: |
+              -e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}
 
       - name: Host - Set ${{ matrix.arch_type }} musl to ${{ matrix.arch_config }}
         run: sed "s|GCC_CONFIG_FOR_TARGET +=|GCC_CONFIG_FOR_TARGET += ${matrix_arch_config}|" -i config.mak
@@ -53,7 +66,7 @@ jobs:
           done
 
       - name: Host - Cache sources (restore)
-        uses: actions/cache/restore@0400d5f644dc74513175e3cd8d07132dd4860809 # v4.2.4
+        uses: actions/cache/restore@cdf6c1fa76f9f475f3d7449005a359c84ca0f306 # v5.0.3
         with:
           path: ${{ github.workspace }}/sources
           key: mcm-sources-${{ hashFiles('versions.mak') }}
@@ -61,33 +74,13 @@ jobs:
       - name: Host - Github cache files - update timestamps
         run: find ${{ github.workspace }}/sources/ -type f -exec touch -a -m {} +
 
-      - uses: userdocs/actions/qbt_docker@e74d179578ddcf1cd07cd9eefd0915f33a3bd600 # v1.0.1
-        with:
-            container_name: ${{ env.container_name }}
-            os_id: "alpine"
-            os_version_id: "edge"
-            custom_docker_commands: "-e GNU_MIRROR_URL=${{ inputs.gnu_mirror_url }}"
-            additional_alpine_apps: ""
-
-      - name: Docker - apk update
-        run: docker exec ${container_name} apk update --no-cache
-
-      - name: Docker - apk install dependencies
-        run: >
-          docker exec ${container_name}
-          apk add -u --no-cache
-          autoconf automake bash bison build-base curl
-          findutils flex git libarchive-tools libtool
-          linux-headers patch perl pkgconf rsync
-          tar texinfo xz zip zlib-dev zlib-static
-
       - name: Docker - scripts +x
         run: docker exec ${container_name} chmod +x cowpatch.sh builder-helper.bash
 
       - name: Docker - install ${{ matrix.arch_type }} toolchain
         run: >
-          docker exec -u gh:gh ${container_name}
-          make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="/home/gh/build/${matrix_arch_type}"
+          docker exec "${container_name}"
+          make -j"$(nproc)" install TARGET="${matrix_arch_type}" OUTPUT="${wd}/build/${matrix_arch_type}"
 
       - name: Host - archive ${{ matrix.arch_type }} toolchain
         run: |
@@ -95,12 +88,12 @@ jobs:
           XZ_OPT=-9T0 tar -cvJf ${matrix_triple_prefix}-${matrix_arch_type}.tar.xz ${matrix_arch_type}/
 
       - name: Host - Generate artifact attestation
-        uses: actions/attest-build-provenance@e8998f949152b193b063cb0ec769d69d929409be # v2.4.0
+        uses: actions/attest-build-provenance@96278af6caaf10aea03fd8d33a09a777ca52d62f # v3.2.0
         with:
           subject-path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"
 
       - name: Host - Docker - upload artifacts
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6.0.0
         with:
           name: "${{ matrix.triple_prefix }}-${{ matrix.arch_type }}-toolchain"
           path: "build/${{ matrix.triple_prefix }}-${{ matrix.arch_type }}.tar.xz"

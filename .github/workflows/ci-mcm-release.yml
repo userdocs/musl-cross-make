@@ -9,13 +9,13 @@ jobs:
     runs-on: ubuntu-24.04-arm
     steps:
       - name: Checkout
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           ref: ${{ github.event.repository.default_branch }}
           persist-credentials: false
 
       - name: Host - Download artifacts
-        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5.0.0
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7.0.0
         with:
           path: toolchains
           pattern: "*-toolchain"
@@ -27,13 +27,13 @@ jobs:
           grep -v '^#' versions.mak | grep -v '^\s*$' | sed -E 's/ *([^ =]+) *= *(.*)/| `\1` | `\2` |/' >> release_body.md
 
       - name: set tag via date
-        run: printf '%s\n' "github_tag=$(date +"%j-%y")" >> $GITHUB_ENV
+        run: printf '%s\n' "github_tag=$(date +"%y%V")" >> $GITHUB_ENV
 
       - name: Create release - tag - assets
-        uses: ncipollo/release-action@bcfe5470707e8832e12347755757cec0eb3c22af # v1.18.0
+        uses: ncipollo/release-action@b7eabc95ff50cbeeedec83973935c8f306dfcd0b # v1.20.0
         with:
           prerelease: false
-          artifacts: "toolchains/*.tar.xz"
+          artifacts: "toolchains/*.tar.xz,versions.json"
           replacesArtifacts: true
           tag: "${{ env.github_tag }}"
           name: "musl-cross-make toolchains"
