@@ -11,3 +11,6 @@
 /build/
 remote_versions.json
 .claude/settings.local.json
+.github/workflows/ci-check-new-releases.yml
+.github/workflows/ci-auto-rerun-failed-jobs-action.yml
+.github/copilot-instructions.md
