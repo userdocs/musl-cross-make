@@ -90,37 +90,6 @@ This allows setting `COMMON_CONFIG` for shared options in `config.mak`, while `G
 ./builder-helper.bash target build       # Build specified target
 ```
 
-### Patch verifier tool
-
-the [help/patch.sh](help/patch.sh) is a patch verification tool to check which patches work against a new release of a dependency that makes no changes unless specifically told to.
-
-```bash
-help/patch.sh
-
-Usage: help/patch.sh [OPTIONS] [patch_directory]
-
-Check patches from a directory (dry run by default). Use --apply to actually apply them.
-
-Basic examples:
-
-  help/patch.sh my-patches                  # Check patches from 'my-patches' directory (dry run)
-
-  help/patch.sh -a my-patches               # Apply patches from 'my-patches' directory
-
-  help/patch.sh -r /path/to/repo my-patches # Check patches for specific directory
-
-Use 'help/patch.sh --help' for detailed options and usage information.
-```
-
-Example usage.
-
-```bash
-help/patch.sh -r gcc-15.1.0 patches/gcc-15.1.0
-```
-
-It can perform some automation like saving failed patches to a file or removing them, use the `--help` flag for more info.
-
-
 ## CI/CD Workflow
 
 ### Architecture
@@ -156,8 +125,7 @@ Available inputs for `workflow_dispatch`:
 
 ### Caching Implementation Notes
 
-> [!NOTE]
-> **Make and Caching Interaction**: There's a peculiar interaction between caching and Make when restoring dependencies. When `actions/cache` restores files, their timestamps may be set before the `hashes/*.sha1` files from `actions/checkout`.
+> [!NOTE] > **Make and Caching Interaction**: There's a peculiar interaction between caching and Make when restoring dependencies. When `actions/cache` restores files, their timestamps may be set before the `hashes/*.sha1` files from `actions/checkout`.
 >
 > This causes Make's hash check to trigger downloads because the archive appears older than the SHA file. The solution involves updating timestamps after cache restoration:
 >

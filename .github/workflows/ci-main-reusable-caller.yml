@@ -6,12 +6,12 @@ on:
       gnu_mirror_url:
         description: "Which GNU mirror to use?"
         required: true
-        default: "https://ftp.gnu.org/gnu"
+        default: "https://ftpmirror.gnu.org/gnu" # This is the workflow_dispatch url. change scheduled_defaults url used in scheduled workflows and source_urls.mak for fallback
         type: string
       only_aarch64_runners:
         description: "aarch64 matrix"
         required: true
-        default: true
+        default: false
         type: boolean
       only_x86_64_runners:
         description: "x86_64 matrix"
@@ -21,7 +21,7 @@ on:
       aarch64_x86_64_runners:
         description: "aarch64 and x86_64 matrix"
         required: true
-        default: false
+        default: true
         type: boolean
       toolchains_only:
         description: "Only toolchain jobs"
@@ -33,9 +33,172 @@ on:
         required: true
         default: false
         type: boolean
+      bypass_update_check:
+        description: "Bypass check to build new release?"
+        required: true
+        default: false
+        type: boolean
+      bypass_git_commit:
+        description: "Bypass committing updated files?"
+        required: true
+        default: false
+        type: boolean
+      skip_rerun:
+        description: "Skip rerun?"
+        required: true
+        default: false
+        type: boolean
+      retries:
+        description: "Number of rerun retries"
+        required: true
+        default: "1"
+        type: choice
+        options: ["1", "2", "3", "4", "5", "6", "7", "8", "9"]
+
+  # schedule:
+  #   - cron: "0 */3 * * *"
 
 jobs:
+  skip_duplicate_job:
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      actions: write
+      contents: read
+    outputs:
+      should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    steps:
+      - id: skip_check
+        uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
+        with:
+          concurrent_skipping: "always"
+          cancel_others: "false"
+          skip_after_successful_duplicate: false
+          do_not_skip: ""
+
+  mirror_url:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: ["skip_duplicate_job"]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    outputs:
+      gcc_version: ${{ steps.set_mirror_url.outputs.gcc_version }}
+      binutils_version: ${{ steps.set_mirror_url.outputs.binutils_version }}
+      gnu_mirror_url: ${{ steps.set_mirror_url.outputs.gnu_mirror_url }}
+    steps:
+      - name: Set mirror URL dynamically
+        id: set_mirror_url
+        env:
+          inputs_gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url || 'https://ftpmirror.gnu.org/gnu' }}
+        run: |
+          # This helper script checks upstream gcc and binutils versions from sourceware then checks if gnu mirrors actually work
+          # It will try to use the mirror url provided in inputs and test if it works. If that fails it will try to use the script array to test the mirrors
+          # If they do work, we check if they actually have the latest version of gcc and binutils assets we need.
+          # Since it is getting version from upstream it is not relying on a mirror being updated to determine the latest version.
+          # Instead it checks if the mirror actually has the latest version assets we need since we know what the latest version is.
+
+          curl -sL "https://raw.githubusercontent.com/userdocs/voding/refs/heads/main/musl-cross-make/simple_source" -o simple_source
+          chmod +x simple_source
+
+          # simple upstream sourceware version outputs for gcc and binutils
+          printf '%s\n' "gcc_version=$(./simple_source gcc)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+          printf '%s\n' "binutils_version=$(./simple_source binutils)" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+
+          # Mirror tests. starting with the input mirror url and falling back to an array of mirrors
+          printf '%s\n' "gnu_mirror_url=$(./simple_source "${inputs_gnu_mirror_url}")" | tee -a $GITHUB_OUTPUT | tee -a $GITHUB_STEP_SUMMARY
+
+  scheduled_defaults:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: ["skip_duplicate_job", "mirror_url"]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    outputs:
+      gcc_version: ${{ needs.mirror_url.outputs.gcc_version }}
+      binutils_version: ${{ needs.mirror_url.outputs.binutils_version }}
+      gnu_mirror_url: ${{ needs.mirror_url.outputs.gnu_mirror_url }}
+      only_aarch64_runners: ${{ github.event.inputs.only_aarch64_runners || 'false' }}
+      only_x86_64_runners: ${{ github.event.inputs.only_x86_64_runners || 'false' }}
+      aarch64_x86_64_runners: ${{ github.event.inputs.aarch64_x86_64_runners || 'true' }}
+      toolchains_only: ${{ github.event.inputs.toolchains_only || 'false' }}
+      docker_only: ${{ github.event.inputs.docker_only || 'false' }}
+      bypass_update_check: ${{ github.event.inputs.bypass_update_check || 'false' }}
+      bypass_git_commit: ${{ github.event.inputs.bypass_git_commit || 'false' }}
+      skip_rerun: ${{ github.event.inputs.skip_rerun || 'false' }}
+      retries: ${{ github.event.inputs.retries || '1' }}
+
+    steps:
+      - name: Setting Outputs from inputs
+        run: |
+          printf '%b\n\n' "Setting Outputs from Inputs"
+
+  show_outputs:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: [skip_duplicate_job, scheduled_defaults]
+    runs-on: ubuntu-24.04-arm
+    permissions:
+      contents: read
+    env:
+      gcc_version: ${{ needs.scheduled_defaults.outputs.gcc_version }}
+      binutils_version: ${{ needs.scheduled_defaults.outputs.binutils_version }}
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
+      only_aarch64_runners: ${{ needs.scheduled_defaults.outputs.only_aarch64_runners }}
+      only_x86_64_runners: ${{ needs.scheduled_defaults.outputs.only_x86_64_runners }}
+      aarch64_x86_64_runners: ${{ needs.scheduled_defaults.outputs.aarch64_x86_64_runners }}
+      toolchains_only: ${{ needs.scheduled_defaults.outputs.toolchains_only }}
+      docker_only: ${{ needs.scheduled_defaults.outputs.docker_only }}
+      bypass_update_check: ${{ needs.scheduled_defaults.outputs.bypass_update_check }}
+      bypass_git_commit: ${{ needs.scheduled_defaults.outputs.bypass_git_commit }}
+      skip_rerun: ${{ needs.scheduled_defaults.outputs.skip_rerun }}
+      retries: ${{ needs.scheduled_defaults.outputs.retries }}
+    steps:
+      - name: Set output
+        run: |
+          printf '%b\n' "# Scheduled Defaults Outputs Summary" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' ":octocat: Here is a summary of inputs set as string outputs that are used in workflows." >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "gcc_version: \`${gcc_version}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "binutils_version: \`${binutils_version}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "gnu_mirror_url: \`${gnu_mirror_url}\`" >> $GITHUB_STEP_SUMMARY
+
+          printf '\n%b\n' "only_aarch64_runners: \`${only_aarch64_runners}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "only_x86_64_runners: \`${only_x86_64_runners}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "aarch64_x86_64_runners: \`${aarch64_x86_64_runners}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "toolchains_only: \`${toolchains_only}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "docker_only: \`${docker_only}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "bypass_update_check: \`${bypass_update_check}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "bypass_git_commit: \`${bypass_git_commit}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "skip_rerun: \`${skip_rerun}\`" >> $GITHUB_STEP_SUMMARY
+          printf '\n%b\n' "retries: \`${retries}\`" >> $GITHUB_STEP_SUMMARY
+
+  ci-check-new-releases:
+    if: needs.skip_duplicate_job.outputs.should_skip != 'true'
+    needs: ["skip_duplicate_job", "scheduled_defaults"]
+    concurrency:
+      group: ci-check-new-releases
+      cancel-in-progress: true
+    permissions:
+      contents: write
+    uses: ./.github/workflows/ci-check-new-releases.yml
+    with:
+      bypass_update_check: ${{ needs.scheduled_defaults.outputs.bypass_update_check }}
+      bypass_git_commit: ${{ needs.scheduled_defaults.outputs.bypass_git_commit }}
+      gcc_version: ${{ needs.scheduled_defaults.outputs.gcc_version }}
+      binutils_version: ${{ needs.scheduled_defaults.outputs.binutils_version }}
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
+
   ci-bootstrap-matrix:
+    if: >
+      always() && !failure() && !cancelled()
+      && needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        ci-check-new-releases,
+        ci-bootstrap-build-deps,
+      ]
     runs-on: ubuntu-24.04-arm
     outputs:
       mcm_build_matrix: ${{ steps.triples.outputs.mcm_build_matrix }}
@@ -43,13 +206,13 @@ jobs:
       docker_test_matrix: ${{ steps.triples.outputs.docker_test_matrix }}
       docker_build_platforms: ${{ steps.triples.outputs.docker_build_platforms }}
     env:
-      only_aarch64_runners: ${{ github.event.inputs.only_aarch64_runners }}
-      only_x86_64_runners: ${{ github.event.inputs.only_x86_64_runners }}
-      aarch64_x86_64_runners: ${{ github.event.inputs.aarch64_x86_64_runners }}
+      only_aarch64_runners: ${{ needs.scheduled_defaults.outputs.only_aarch64_runners }}
+      only_x86_64_runners: ${{ needs.scheduled_defaults.outputs.only_x86_64_runners }}
+      aarch64_x86_64_runners: ${{ needs.scheduled_defaults.outputs.aarch64_x86_64_runners }}
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
         with:
           persist-credentials: false
 
@@ -84,15 +247,19 @@ jobs:
           fi
 
           if [[ -n $build_host_exclude ]]; then
-            printf '%s\n' "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)" >> $GITHUB_OUTPUT
-            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]], include: [.include[] | select((.build_host != $build_host_exclude) or (.arch_type and .arch_config))]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
-            printf '%s\n' "docker_test_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
-            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(. != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "mcm_build_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# mcm_build_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+            printf '%s\n' "docker_test_matrix=$(jq -c --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)" >> $GITHUB_OUTPUT
+            printf '\n%b\n' "# docker_test_matrix\n\n\`\`\`json\n$(jq --arg build_host_exclude "${build_host_exclude}" '{build_host: [.build_host[] | select(.name != $build_host_exclude)], arch_type: [.arch_type[]]}' triples.json)\n\`\`\`" >> $GITHUB_STEP_SUMMARY
           fi
 
   ci-bootstrap-build-deps:
-    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
-    needs: [ci-bootstrap-matrix]
+    if: >
+      always() && !failure() && !cancelled()
+      && needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      && needs.scheduled_defaults.outputs.docker_only != 'true'
+    needs: [skip_duplicate_job, scheduled_defaults, ci-check-new-releases]
     concurrency:
       group: ci-check-new-releases
       cancel-in-progress: true
@@ -100,11 +267,15 @@ jobs:
       contents: write
     uses: ./.github/workflows/ci-bootstrap-build-deps.yml
     with:
-      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url }}
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
 
   ci-mcm-build:
-    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
-    needs: [ci-bootstrap-matrix, ci-bootstrap-build-deps]
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      && needs.scheduled_defaults.outputs.docker_only != 'true'
+    needs: [skip_duplicate_job, scheduled_defaults, ci-bootstrap-matrix]
     concurrency:
       group: ci-mcm-build
       cancel-in-progress: true
@@ -115,11 +286,15 @@ jobs:
     uses: ./.github/workflows/ci-mcm-build.yml
     with:
       mcm_build_matrix: ${{ needs.ci-bootstrap-matrix.outputs.mcm_build_matrix }}
-      gnu_mirror_url: ${{ github.event.inputs.gnu_mirror_url }}
+      gnu_mirror_url: ${{ needs.scheduled_defaults.outputs.gnu_mirror_url }}
 
   ci-mcm-release:
-    if: always() && !failure() && !cancelled() && github.event.inputs.docker_only != 'true'
-    needs: [ci-mcm-build]
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      && needs.scheduled_defaults.outputs.docker_only != 'true'
+    needs: [skip_duplicate_job, scheduled_defaults, ci-mcm-build]
     concurrency:
       group: ci-mcm-release
       cancel-in-progress: true
@@ -128,8 +303,18 @@ jobs:
     uses: ./.github/workflows/ci-mcm-release.yml
 
   ci-docker-build:
-    if: always() && !failure() && !cancelled() && github.event.inputs.toolchains_only != 'true'
-    needs: [ci-bootstrap-matrix, ci-mcm-release]
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      && needs.scheduled_defaults.outputs.toolchains_only != 'true'
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        ci-bootstrap-matrix,
+        ci-mcm-release,
+      ]
     concurrency:
       group: ci-docker-build
       cancel-in-progress: true
@@ -144,8 +329,18 @@ jobs:
       docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
 
   ci-docker-test:
-    if: always() && !failure() && !cancelled() && github.event.inputs.toolchains_only != 'true'
-    needs: [ci-bootstrap-matrix, ci-docker-build]
+    if: >
+      always() && !failure() && !cancelled() &&
+      needs.skip_duplicate_job.outputs.should_skip != 'true'
+      && needs.ci-check-new-releases.outputs.build_new_release == 'true'
+      && needs.scheduled_defaults.outputs.toolchains_only != 'true'
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        ci-bootstrap-matrix,
+        ci-docker-build,
+      ]
     concurrency:
       group: ci-docker-test
       cancel-in-progress: true
@@ -155,3 +350,42 @@ jobs:
     with:
       docker_test_matrix: ${{ needs.ci-bootstrap-matrix.outputs.docker_test_matrix }}
       docker_build_platforms: ${{ needs.ci-bootstrap-matrix.outputs.docker_build_platforms }}
+
+  ci-auto-rerun-failed-jobs:
+    if: failure() && (needs.scheduled_defaults.outputs.skip_rerun || 'false') == 'false'
+    needs:
+      [
+        skip_duplicate_job,
+        scheduled_defaults,
+        ci-bootstrap-matrix,
+        ci-mcm-build,
+        ci-mcm-release,
+        ci-docker-build,
+        ci-docker-test,
+      ]
+    concurrency:
+      group: ci-auto-rerun-failed-jobs
+      cancel-in-progress: true
+    permissions:
+      actions: write
+    runs-on: ubuntu-24.04-arm
+    environment: production
+    env:
+      GH_TOKEN: "${{ secrets.AUTO_RERUN || github.token }}"
+      github_repo: "" # To use ci-auto-rerun-failed-jobs.yml hosted in a remote repository else default to the current repository. Requires PAT token AUTO_RERUN
+      retries: ${{ needs.scheduled_defaults.outputs.retries || '3' }}
+      distinct_id: ${{ github.event.inputs.distinct_id }}
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          persist-credentials: false
+      - name: ci-auto-rerun-failed-jobs via ${{ env.github_repo || github.repository }}
+        run: >
+          gh workflow run ci-auto-rerun-failed-jobs-action.yml
+          --repo "${github_repo:-$GITHUB_REPOSITORY}"
+          -f github_repo=${GITHUB_REPOSITORY}
+          -f run_id=${GITHUB_RUN_ID}
+          -f attempts=${GITHUB_RUN_ATTEMPT}
+          -f retries=${retries}
+          -f distinct_id=${distinct_id}
