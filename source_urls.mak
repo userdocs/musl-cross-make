@@ -15,3 +15,4 @@ LINUX_SITE = https://cdn.kernel.org/pub/linux/kernel
 CONFIG_SUB_URL = https://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=$(CONFIG_SUB_REV)
 
 MOLD_REPO = https://github.com/rui314/mold.git
+ZLIB_SITE = https://github.com/madler/zlib/releases/download/v$(ZLIB_VER)

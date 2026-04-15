@@ -10,8 +10,6 @@ SECURITY_FLAGS = \
     -fstack-protector-strong \
 	-fno-plt \
     -fno-delete-null-pointer-checks \
-    -fno-strict-overflow \
-    -fno-strict-aliasing \
 	-ftrivial-auto-var-init=zero \
     -fexceptions
 
@@ -20,11 +18,12 @@ WARNING_FLAGS = -w
 
 # Linker Flags
 LINKER_FLAGS = \
-	-static --static -pthread \
+	-pthread \
     -Wl,-O1 \
     -Wl,-s \
     -Wl,-z,now \
-    -Wl,-z,relro
+    -Wl,-z,relro \
+    -Wl,--gc-sections
 
 # Compiler configurations
 COMMON_CONFIG += CC="gcc"
@@ -37,18 +36,18 @@ COMMON_CONFIG += LDFLAGS="${LINKER_FLAGS}"
 # enable
 COMMON_CONFIG += --enable-default-pie
 COMMON_CONFIG += --enable-static
+COMMON_CONFIG += --enable-shared
 COMMON_CONFIG += --enable-static-pie
 COMMON_CONFIG += --enable-pic
 COMMON_CONFIG += --enable-threads
+COMMON_CONFIG += --enable-lto
 # with
 COMMON_CONFIG += --with-pic
 COMMON_CONFIG += --with-system-zlib
 # disable
 COMMON_CONFIG += --disable-werror
 COMMON_CONFIG += --disable-multilib
-COMMON_CONFIG += --disable-shared
 COMMON_CONFIG += --disable-nls
-COMMON_CONFIG += --disable-plugins
 
 # Binutils configuration
 BINUTILS_CONFIG += --enable-deterministic-archives
@@ -56,10 +55,12 @@ BINUTILS_CONFIG += --enable-ld=default
 BINUTILS_CONFIG += --enable-relro
 BINUTILS_CONFIG += --enable-64-bit-bfd
 BINUTILS_CONFIG += --enable-new-dtags
+BINUTILS_CONFIG += --enable-plugins
 # disable
 BINUTILS_CONFIG += --disable-gprofng
 BINUTILS_CONFIG += --disable-gdb
 BINUTILS_CONFIG += --disable-gold
+BINUTILS_CONFIG += --disable-shared
 
 # GCC configuration
 
@@ -73,9 +74,8 @@ GCC_CONFIG += --enable-clocale=generic
 GCC_CONFIG += --enable-libquadmath
 GCC_CONFIG += --enable-libquadmath-support
 GCC_CONFIG += --enable-initfini-array
+GCC_CONFIG += --enable-plugin
 # with
-GCC_CONFIG += --with-stage1-ldflags="${TOOLCHAIN_STATIC_FLAGS}"
-GCC_CONFIG += --with-boot-ldflags="${TOOLCHAIN_STATIC_FLAGS}"
 GCC_CONFIG += --with-default-libstdcxx-abi=new
 GCC_CONFIG += --with-linker-hash-style=gnu
 # disable
@@ -85,7 +85,6 @@ GCC_CONFIG += --disable-libmudflap
 GCC_CONFIG += --disable-libgomp
 GCC_CONFIG += --disable-libsanitizer
 GCC_CONFIG += --disable-gnu-indirect-function
-GCC_CONFIG += --disable-lto
 
 # GCC configuration for target - modified by workflow or build-helper.bash using triples.json
 GCC_CONFIG_FOR_TARGET +=

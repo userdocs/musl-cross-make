@@ -46,7 +46,7 @@ on:
       skip_rerun:
         description: "Skip rerun?"
         required: true
-        default: false
+        default: true
         type: boolean
       retries:
         description: "Number of rerun retries"

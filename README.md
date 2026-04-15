@@ -1,4 +1,4 @@
-# musl-cross-make
+# qbt-musl-cross-make
 
 🔵 This project uses a modified version of [musl-cross-make](https://github.com/richfelker/musl-cross-make)
 
@@ -30,7 +30,7 @@ loongarch64-linux-musl="--with-arch=la64v1.0 --with-abi=lp64d"
 You can use this URL to always get the latest release:
 
 ```
-https://github.com/userdocs/musl-cross-make/releases/latest/download/
+https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/
 ```
 
 By appending the desired target:
@@ -57,29 +57,29 @@ x86_64-linux-musl.tar.xz
 For example, for `x86_64`:
 
 ```
-https://github.com/userdocs/musl-cross-make/releases/latest/download/x86_64-linux-musl.tar.xz
+https://github.com/userdocs/qbt-musl-cross-make/releases/latest/download/x86_64-linux-musl.tar.xz
 ```
 
 ## Docker
 
-There are docker images of the toolchains here <ghcr.io/userdocs/musl-cross-make>
+There are docker images of the toolchains here <ghcr.io/userdocs/qbt-musl-cross-make>
 
 Tags are the toolset names.
 
 ```bash
-docker pull ghcr.io/userdocs/musl-cross-make:tagname
+docker pull ghcr.io/userdocs/qbt-musl-cross-make:tagname
 ```
 
 For example:
 
 ```bash
- docker pull ghcr.io/userdocs/musl-cross-make:aarch64-linux-musl
+ docker pull ghcr.io/userdocs/qbt-musl-cross-make:aarch64-linux-musl
 ```
 
 ## Configuration
 
-The build configuration is defined in the `config.mak` file [here](https://github.com/userdocs/musl-cross-make/blob/main/config.mak)
+The build configuration is defined in the `config.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/config.mak)
 
-The versions configuration is defined in the `versions.mak` file [here](https://github.com/userdocs/musl-cross-make/blob/main/versions.mak)
+The versions configuration is defined in the `versions.mak` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/versions.mak)
 
-The triples configuration is defined in the `triples.json` file [here](https://github.com/userdocs/musl-cross-make/blob/main/triples.json)
+The triples configuration is defined in the `triples.json` file [here](https://github.com/userdocs/qbt-musl-cross-make/blob/main/triples.json)
