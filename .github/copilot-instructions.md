@@ -16,9 +16,10 @@
 - Only use `--static` (not `-static`) to create static toolchain binaries. Using `-static` alone can cause errors (e.g., missing POSIX threads).
 - When working with `../config.mak`, always load options from both `../gcc-configure-options.md` and `../gcc-configure-options-recursive.md`.
 - The binutils gold linker is deprecated. Use `ld=default` and `--disable-gold`.
-- For fully static toolchains linked to musl:
-    - Do **not** use `-flto` or `-fuse-linker-plugin` (LTO is not supported; plugins require dynamic loading).
-    - Do **not** add any LTO settings.
+- The toolchain is dynamically linked and supports LTO (`-flto`) and `-fuse-linker-plugin`.
+- The toolchain uses GCC's bundled zlib (not `--with-system-zlib`) for cross-compiler portability.
+- The toolchain binaries depend on host shared libraries (gmp, mpfr, mpc, isl, libstdc++).
+- When deploying outside Docker, ensure these shared libraries are available on the host.
 - Only set linker options like `LDFLAGS` when linking, **not** when building libraries.
 - GNU libtool redefines `-static`; to ensure static linking, use `--static` or `-Wl,-static` in `LDFLAGS` (possibly with `-static`).
 - When building OpenSSL statically, do **not** use `openssl -static` (it disables threads, PIE, PIC). For `-static-pie` binaries with musl/Alpine, use the correct flags.

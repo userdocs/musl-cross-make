@@ -92,6 +92,21 @@ jobs:
           echo "--- Running binary ---" &&
           ./hello'
 
+      - name: Run cross-arch container gcc build hello.c with LTO
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Compiling binary with LTO ---" &&
+          gcc -static -flto -o hello_lto hello.c'
+
+      - name: Run cross-arch container qemu run LTO binary
+        run: >
+          docker run -v ${{ github.workspace }}:/root -w /root ghcr.io/${{ github.repository }}:${arch_type} bash -c '
+          echo "--- Checking binary type ---" &&
+          file ./hello_lto &&
+
+          echo "--- Running binary ---" &&
+          ./hello_lto'
+
       - name: create test hello_zlib-ng.c
         run: |
           echo "--- Creating source file ---"

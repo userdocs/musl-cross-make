@@ -12,82 +12,82 @@
   "arch_type": [
     {
       "name": "aarch64-linux-musl",
-      "cross_name": "aarch64",
+      "qbt_cross_name": "aarch64",
       "arch_config": "--with-arch=armv8-a --with-abi=lp64"
     },
     {
       "name": "arm-linux-musleabi",
-      "cross_name": "armel",
+      "qbt_cross_name": "armel",
       "arch_config": "--with-arch=armv5te --with-tune=arm926ej-s --with-float=soft --with-abi=aapcs-linux"
     },
     {
       "name": "arm-linux-musleabihf",
-      "cross_name": "armhf",
+      "qbt_cross_name": "armhf",
       "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
     },
     {
       "name": "armv6-linux-musleabihf",
-      "cross_name": "armhf",
+      "qbt_cross_name": "armhf",
       "arch_config": "--with-arch=armv6kz --with-tune=arm1176jzf-s --with-fpu=vfpv2 --with-float=hard --with-abi=aapcs-linux"
     },
     {
       "name": "armv7l-linux-musleabihf",
-      "cross_name": "armv7",
+      "qbt_cross_name": "armv7",
       "arch_config": "--with-arch=armv7-a --with-tune=generic-armv7-a --with-fpu=vfpv3-d16 --with-float=hard --with-abi=aapcs-linux --with-mode=thumb"
     },
     {
       "name": "i686-linux-musl",
-      "cross_name": "x86",
+      "qbt_cross_name": "x86",
       "arch_config": "--with-arch=pentium-m --with-fpmath=sse --with-tune=generic --enable-cld"
     },
     {
       "name": "x86_64-linux-musl",
-      "cross_name": "x86_64",
+      "qbt_cross_name": "x86_64",
       "arch_config": "--with-arch=x86-64 --with-tune=generic"
     },
     {
       "name": "mips-linux-musl",
-      "cross_name": "mips",
+      "qbt_cross_name": "mips",
       "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
     },
     {
       "name": "mipsel-linux-musl",
-      "cross_name": "mipsel",
+      "qbt_cross_name": "mipsel",
       "arch_config": "--with-arch=mips32 --with-mips-plt --with-float=soft --with-abi=32"
     },
     {
       "name": "mips64-linux-musl",
-      "cross_name": "mips64",
+      "qbt_cross_name": "mips64",
       "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
     },
     {
       "name": "mips64el-linux-musl",
-      "cross_name": "mips64el",
+      "qbt_cross_name": "mips64el",
       "arch_config": "--with-arch=mips3 --with-tune=mips64 --with-mips-plt --with-float=soft --with-abi=64"
     },
     {
       "name": "powerpc-linux-musl",
-      "cross_name": "powerpc",
+      "qbt_cross_name": "powerpc",
       "arch_config": "--enable-secureplt --enable-decimal-float=no"
     },
     {
       "name": "powerpc64le-linux-musl",
-      "cross_name": "ppc64el",
+      "qbt_cross_name": "ppc64el",
       "arch_config": "--with-abi=elfv2 --enable-secureplt --enable-decimal-float=no --enable-targets=powerpcle-linux"
     },
     {
       "name": "s390x-linux-musl",
-      "cross_name": "s390x",
+      "qbt_cross_name": "s390x",
       "arch_config": "--with-arch=z196 --with-tune=zEC12 --with-zarch --with-long-double-128 --enable-decimal-float"
     },
     {
       "name": "riscv64-linux-musl",
-      "cross_name": "riscv64",
+      "qbt_cross_name": "riscv64",
       "arch_config": "--with-arch=rv64gc --with-abi=lp64d --enable-autolink-libatomic"
     },
     {
       "name": "loongarch64-linux-musl",
-      "cross_name": "loongarch64",
+      "qbt_cross_name": "loongarch64",
       "arch_config": "--with-arch=la64v1.0 --with-abi=lp64d"
     }
   ]
