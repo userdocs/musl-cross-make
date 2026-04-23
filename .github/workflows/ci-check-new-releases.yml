@@ -142,7 +142,6 @@ jobs:
           upstream_urls_dl[MOLD_VER]="https://github.com/rui314/mold/archive/refs/tags/v${upstream_versions[MOLD_VER]}.tar.gz"
           upstream_urls_dl[ZLIB_VER]="https://github.com/madler/zlib/releases/download/v${upstream_versions[ZLIB_VER]}/zlib-${upstream_versions[ZLIB_VER]}.tar.gz"
 
-
           ver() {
               local input="$1"
 
