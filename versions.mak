@@ -1,7 +1,7 @@
 CONFIG_SUB_REV = a2287c3041a3
 # GCC_VER = 15.1.0 will get a release asset - requires sha1 hash file.
 # GCC_VER = 16-2025072 will get a snapshot asset - requires sha1 hash file.
-GCC_VER = 15.2.0
+GCC_VER = 16.1.0
 # BINUTILS_VER = 2.44 will get a release asset - requires sha1 hash file.
 # BINUTILS_VER = 2.44.90 will get a snapshot asset - requires sha1 hash file.
 BINUTILS_VER = 2.46.0
@@ -12,7 +12,7 @@ MUSL_VER = 5122f9f3c99f
 GMP_VER = 6.3.0
 MPC_VER = 1.3.1
 MPFR_VER = 4.2.2
-LINUX_VER = 6.19.12
+LINUX_VER = 6.19.14
 ISL_VER = 0.27
 # MOLD_VER = version tag (e.g. 2.40.4 clones tag v2.40.4). Leave empty to skip mold.
 MOLD_VER = 2.41.0
