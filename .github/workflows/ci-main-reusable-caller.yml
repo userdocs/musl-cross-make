@@ -66,6 +66,8 @@ jobs:
       contents: read
     outputs:
       should_skip: ${{ steps.skip_check.outputs.should_skip }}
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - id: skip_check
         uses: fkirc/skip-duplicate-actions@f75f66ce1886f00957d99748a42c724f4330bdcf # v5.3.1
@@ -81,8 +83,6 @@ jobs:
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     outputs:
       gcc_version: ${{ steps.set_mirror_url.outputs.gcc_version }}
       binutils_version: ${{ steps.set_mirror_url.outputs.binutils_version }}
