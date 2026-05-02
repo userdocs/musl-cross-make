@@ -81,6 +81,8 @@ jobs:
     runs-on: ubuntu-24.04-arm
     permissions:
       contents: read
+    env:
+      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     outputs:
       gcc_version: ${{ steps.set_mirror_url.outputs.gcc_version }}
       binutils_version: ${{ steps.set_mirror_url.outputs.binutils_version }}
