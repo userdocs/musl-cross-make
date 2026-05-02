@@ -38,6 +38,7 @@ jobs:
       github_repository: ${{ github.repository }}
       github_workspace: ${{ github.workspace }}
       config_mak_upstream_test: ""
+      default_branch: ${{ github.event.repository.default_branch }}
     defaults:
       run:
         shell: bash
@@ -314,6 +315,6 @@ jobs:
             git add versions.json versions.mak hashes/*.sha1 patches/* sources/config.sub || true
             git status --porcelain | grep -q . && {
             git -c user.name='github-actions[bot]' -c user.email='github-actions[bot]@users.noreply.github.com' commit -m "Automated commit by GitHub Actions"
-            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${{ github.event.repository.default_branch }}
+            git push https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.git HEAD:${default_branch}
             } || printf '%s\n' "No changes detected"
           fi
