@@ -55,15 +55,13 @@ jobs:
           set -x
           ################# config.mak stuff ######################
 
-          # Fast connectivity check with short timeout
-          if curl -sLIo /dev/null --fail --connect-timeout 5 --max-time 10 "http://git.savannah.gnu.org/gitweb/?p=config.git;a=blob_plain;f=config.sub;hb=HEAD"; then
-            # Use git ls-remote with timeout
-            if config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" | { read line; printf '%s' "${line:0:12}"; })"; then
-              printf '%s\n' "savannah.gnu.org is reachable, using git to get config.sub commit hash of remote version"
-              printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
-            else
-              config_mak_upstream_test="failed"
-            fi
+          # Try GitHub mirror first (always reachable from CI), fallback to savannah
+          if config_sub_upstream="$(git ls-remote "https://github.com/userdocs/config.sub" refs/heads/master 2>/dev/null | { read -r line; printf '%s' "${line:0:12}"; })"; [[ -n "${config_sub_upstream}" ]]; then
+            printf '%s\n' "Got config.sub commit hash via GitHub mirror"
+            printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via GitHub mirror" | tee -a $GITHUB_STEP_SUMMARY
+          elif config_sub_upstream="$(timeout 30 git ls-remote "https://git.savannah.gnu.org/git/config.git" 2>/dev/null | { read -r line; printf '%s' "${line:0:12}"; })"; [[ -n "${config_sub_upstream}" ]]; then
+            printf '%s\n' "Got config.sub commit hash via savannah git ls-remote"
+            printf '%b\n\n' "> [!NOTE]\n> \`config_mak_upstream_test:\` \`passed\` \n> config.sub commit hash retrieved via savannah git-ls-remote" | tee -a $GITHUB_STEP_SUMMARY
           else
             config_mak_upstream_test="failed"
           fi
