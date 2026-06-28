@@ -1,6 +1,7 @@
 // https://docs.renovatebot.com/config-presets/#github-hosted-presets
 // https://docs.renovatebot.com/config-presets/#github
 {
+  "forkProcessing": "enabled",
   "extends": [
     "github>userdocs/renovate:default.json"
   ]
