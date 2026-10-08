@@ -237,11 +237,13 @@ MOLD_CARGO_ENV = \
 	CARGO_TARGET_DIR="$(MOLD_CARGO_TARGET_DIR)" \
 	CFLAGS="$(OPTIMIZATION_FLAGS) $(SECURITY_FLAGS)"
 
-# Link the mold executable statically. These flags are passed via `cargo rustc`
-# so they apply only to the final binary: putting +crt-static in RUSTFLAGS would
-# also hit proc-macro dependencies (syn), which cannot be built static on musl hosts.
-# -static/--static/-pthread are dropped because rustc chooses the static-pie mode itself.
-MOLD_STATIC_RUSTFLAGS = -C target-feature=+crt-static -C strip=symbols \
+# Mostly-static link (equivalent of the old MOLD_MOSTLY_STATIC=ON): the musl libc stays
+# dynamic so mold can dlopen the LTO plugin; -crt-static is required because rustc defaults
+# to static on musl hosts. Passed via `cargo rustc` so it only affects the final binary.
+# -static/--static/-pthread are dropped as they would force a fully static link.
+# With -crt-static off, rustc's unwind crate links libgcc_s (or libunwind) dynamically
+# on musl; this is an accepted host-library dependency, like gmp/mpfr/libstdc++.
+MOLD_STATIC_RUSTFLAGS = -C target-feature=-crt-static -C strip=symbols \
 	$(foreach f,$(filter-out -static --static -pthread,$(LINKER_FLAGS)),-C link-arg=$(f))
 
 # Building mold-cli (default features = all targets) also builds the mold crate,
